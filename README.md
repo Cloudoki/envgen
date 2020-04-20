@@ -41,7 +41,7 @@ globals:
 Configuration details:
 
 | Key               | Description |
-| ----------------- |:-------------:|
+| ----------------- |-------------|
 | branchVarName     | name of the env var that contains the CI branch (CIRCLE_BRANCH), for CircleCI |
 | branchVarDefault  | default value of `branchVarName` |
 | branches          | list of branches and their suffixes |
