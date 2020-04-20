@@ -1,0 +1,21 @@
+branchVarName: CIRCLE_BRANCH
+branchVarDefault: develop
+
+branches:
+  - name: develop
+    suffix: _DEV
+  - name: staging
+    suffix: _STG
+
+packages:
+  - package: awesome-crawler
+    variables:
+      - AC_ENDPOINT
+      - AC_THRESHOLD
+  - package: web-server
+    variables:
+      - WS_PORT
+      - WS_ADDRESS
+
+globals:
+  - V_DATABASE
