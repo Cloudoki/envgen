@@ -26,6 +26,7 @@ branches:
 
 packages:
   - package: awesome-crawler
+    envFile: .crawler.env
     variables:
       - AC_THRESHOLD
       - AC_TITLE
@@ -41,11 +42,12 @@ globals:
 Configuration details:
 
 | Key               | Description |
-| ----------------- |-------------|
+| ----------------- | ------------- |
 | branchVarName     | name of the env var that contains the CI branch (CIRCLE_BRANCH), for CircleCI |
-| branchVarDefault  | default value of `branchVarName` |
+| branchVarDefault  | default value of `branchVarName` (optional, defaults to "develop") |
 | branches          | list of branches and their suffixes |
 | packages          | list of subpackages |
+| packages.envFile  | name of the env file to be created (optional) |
 | packages.package  | subpackage path to where the .env file will be written |
 | packages.variables| subpackage environment variables to generate |
 | globals           | list of variables that are environment independent and global to all subpackages |
@@ -78,14 +80,14 @@ Resulting structure:
 ```
 ├── bla.go 
 ├── awesome-crawler
-│   ├── .env
+│   ├── .crawler.env
 │   └── index.js
 └── web-server
     ├── .env
     └── index.html
 ```
 
-Content of awesome-crawler/.env:
+Content of awesome-crawler/.crawler.env:
 ```
 V_DATABASE=somedburl
 AC_TITLE=sometitle

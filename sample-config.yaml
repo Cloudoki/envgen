@@ -9,6 +9,7 @@ branches:
 
 packages:
   - package: awesome-crawler
+    envFile: .crawler.env
     variables:
       - AC_ENDPOINT
       - AC_THRESHOLD

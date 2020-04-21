@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"gopkg.in/yaml.v2"
 )
+
+const DefaultEnvFileName = ".env"
 
 type ConfBranches struct {
 	Name   string `yaml:"name"`
@@ -16,6 +19,7 @@ type ConfBranches struct {
 
 type ConfPackages struct {
 	Package   string   `yaml:"package"`
+	EnvFile   string   `yaml:"envFile"`
 	Variables []string `yaml:"variables"`
 }
 
@@ -65,26 +69,28 @@ func generateEnvFiles(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	for _, g := range gen.conf.Packages {
-		pkg := g.Package
-		logInfo("> Loading variables for " + pkg)
+	for _, p := range gen.conf.Packages {
+		logInfo("> Loading variables for " + p.Package)
 
-		// generate package specific vars
-		packageVars, err := getVariablesValues(g.Variables, gen.branchSuffix)
+		packageVars, err := getVariablesValues(p.Variables, gen.branchSuffix)
 		if err != nil {
 			return err
 		}
 
-		// append globals
 		packageVars = append(packageVars, globals...)
 
-		logInfo("> Writing env file for " + pkg)
-		err = writeFile(fmt.Sprintf("%s/.env", pkg), packageVars)
+		logInfo("> Writing env file for " + p.Package)
+		envFile := p.EnvFile
+		if envFile == "" {
+			envFile = DefaultEnvFileName
+		}
+		genEnvFilePath := fmt.Sprintf("%s/%s", p.Package, envFile)
+		err = writeFile(genEnvFilePath, packageVars)
 		if err != nil {
 			return err
 		}
 
-		logInfo("> Done generating env file for " + pkg)
+		logInfo("> Done generating env file for " + p.Package)
 		fmt.Println()
 	}
 
