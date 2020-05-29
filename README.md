@@ -10,7 +10,11 @@ The purpose of this tool is to:
 
 ### Usage
 
-`$ envgen config.yaml`
+> `$ envgen <vars config file> [env file 1] ... [env file N]`
+
+`$ envgen config.yaml` will read vars already available in the environment
+
+`$ envgen config.yaml .part.env .pck.env` will read vars already available in the environment and will load vars from the passed files
 
 Here's the structure of the configuration file:
 
@@ -30,7 +34,7 @@ packages:
     variables:
       - AC_THRESHOLD
       - AC_TITLE
-  - package: web-server
+  - package: web-server/api
     variables:
       - WS_PORT
       - WS_ADDRESS
@@ -60,9 +64,10 @@ with the variables defined in `variables` and `globals`.
 Project structure:
 ```
 ├── bla.go 
-├── awesome-crawler
+├── awesome-crawler/
 │   └── index.js
-└── web-server
+└── web-server/
+  └── api/
     └── index.html
 ```
 
@@ -83,6 +88,7 @@ Resulting structure:
 │   ├── .crawler.env
 │   └── index.js
 └── web-server
+  └── api/
     ├── .env
     └── index.html
 ```

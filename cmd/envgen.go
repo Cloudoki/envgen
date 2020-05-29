@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 
 	"gopkg.in/yaml.v2"
@@ -39,15 +40,24 @@ type Generator struct {
 var rootCmd = &cobra.Command{
 	Version:       "1.0.0",
 	SilenceErrors: true,
-	Use:           "envgen <configFilePath>",
+	Use:           "envgen <configFilePath> [envFile1] ... [envFileN]",
 	Short:         "envgen generates env files for sub packages",
 	Long:          "envgen is CLI tool that generates .env files for subpackages in your project based on a configuration file",
-	Args:          cobra.ExactArgs(1),
+	Args:          cobra.MinimumNArgs(1),
 	RunE:          generateEnvFiles,
 }
 
 func Execute() {
 	rootCmd.SetErr(errorWriter{})
+
+	envFiles := os.Args[2:]
+	if len(envFiles) > 0 {
+		err := godotenv.Load(envFiles...)
+		if err != nil {
+			rootCmd.PrintErr("Error loading .env file")
+		}
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		rootCmd.PrintErr(err)
 		os.Exit(1)
