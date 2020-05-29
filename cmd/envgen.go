@@ -129,25 +129,22 @@ func (g *Generator) loadConfig(filepath string) error {
 
 	g.conf = *config
 
-	g.branchSuffix, err = g.findBranchSuffix()
-	if err != nil {
-		return fmt.Errorf("missing branch suffix")
-	}
+	g.branchSuffix = g.findBranchSuffix()
 
 	return nil
 }
 
 // findBranchSuffix determines the branch suffix to use, depending on the current CI branch
-func (g *Generator) findBranchSuffix() (string, error) {
+func (g *Generator) findBranchSuffix() string {
 	branch := getEnv(g.conf.BranchVarName, "", g.conf.BranchVarDefault)
 
 	for _, b := range g.conf.Branches {
 		if b.Name == branch {
-			return b.Suffix, nil
+			return b.Suffix
 		}
 	}
 
-	return "", fmt.Errorf("could not find branch suffix")
+	return ""
 }
 
 // getEnv looks up for a loaded environment variable.
