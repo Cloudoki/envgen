@@ -2,49 +2,51 @@ package cmd
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
-
-	"gopkg.in/yaml.v2"
 )
 
 const DefaultEnvFileName = ".env"
 
-type ConfBranches struct {
+type ConfBranch struct {
 	Name   string `yaml:"name"`
 	Suffix string `yaml:"suffix"`
 }
 
-type ConfPackages struct {
+type ConfPackage struct {
 	Package   string   `yaml:"package"`
 	EnvFile   string   `yaml:"envFile"`
 	Variables []string `yaml:"variables"`
 }
 
 type GeneratorConfig struct {
-	BranchVarName    string         `yaml:"branchVarName"`
-	BranchVarDefault string         `yaml:"branchVarDefault"`
-	Branches         []ConfBranches `yaml:"branches"`
-	Packages         []ConfPackages `yaml:"packages"`
-	Globals          []string       `yaml:"globals"`
+	BranchVarName    string        `yaml:"branchVarName"`
+	BranchVarDefault string        `yaml:"branchVarDefault"`
+	Branches         []ConfBranch  `yaml:"branches"`
+	Packages         []ConfPackage `yaml:"packages"`
+	Globals          []string      `yaml:"globals"`
 }
 
 type Generator struct {
 	conf         GeneratorConfig
 	branchSuffix string
+	globals      []string
 }
 
 var rootCmd = &cobra.Command{
-	Version:       "1.0.0",
+	Version:       "2.1.0",
 	SilenceErrors: true,
 	Use:           "envgen <configFilePath> [envFile1] ... [envFileN]",
 	Short:         "envgen generates env files for sub packages",
 	Long:          "envgen is CLI tool that generates .env files for subpackages in your project based on a configuration file",
 	Args:          cobra.MinimumNArgs(1),
-	RunE:          generateEnvFiles,
+	RunE:          runGenerator,
 }
 
 func Execute() {
@@ -64,63 +66,64 @@ func Execute() {
 	}
 }
 
-func generateEnvFiles(cmd *cobra.Command, args []string) error {
-	gen := &Generator{}
-	err := gen.loadConfig(args[0])
+func runGenerator(cmd *cobra.Command, args []string) error {
+	gen, err := newGenerator(args[0])
 	if err != nil {
 		return err
 	}
 
-	logInfo("Starting env files generation")
-	fmt.Println()
+	logInfo("Starting env files generation\n")
+	gen.loadGlobals()
+	gen.generateEnvFiles()
+	logInfo("Finished env files generation!\n")
 
-	globals, err := getVariablesValues(gen.conf.Globals, "")
-	if err != nil {
-		return err
-	}
-
-	for _, p := range gen.conf.Packages {
-		logInfo("> Loading variables for " + p.Package)
-
-		packageVars, err := getVariablesValues(p.Variables, gen.branchSuffix)
-		if err != nil {
-			return err
-		}
-
-		packageVars = append(packageVars, globals...)
-
-		logInfo("> Writing env file for " + p.Package)
-		envFile := p.EnvFile
-		if envFile == "" {
-			envFile = DefaultEnvFileName
-		}
-		genEnvFilePath := fmt.Sprintf("%s/%s", p.Package, envFile)
-		err = writeFile(genEnvFilePath, packageVars)
-		if err != nil {
-			return err
-		}
-
-		logInfo("> Done generating env file for " + p.Package)
-		fmt.Println()
-	}
-
-	logInfo("Finished env files generation!")
 	return nil
 }
 
-func getVariablesValues(envVars []string, suffix string) ([]string, error) {
-	vars := []string{}
-	for _, v := range envVars {
-		val, ok := os.LookupEnv(v + suffix)
-		if !ok {
-			err := fmt.Errorf("missing variable %s", v)
-			return nil, err
-		}
-
-		vars = append(vars, fmt.Sprintf("%s=%s", v, val))
+func newGenerator(filepath string) (*Generator, error) {
+	gen := &Generator{}
+	err := gen.loadConfig(filepath)
+	if err != nil {
+		return nil, err
 	}
 
-	return vars, nil
+	return gen, nil
+}
+
+func (g *Generator) generateEnvFiles() {
+	var wg sync.WaitGroup
+	for _, p := range g.conf.Packages {
+		wg.Add(1)
+		go g.generatePackageEnvFile(p, &wg)
+	}
+
+	wg.Wait()
+}
+
+func (g *Generator) generatePackageEnvFile(pckg ConfPackage, wg *sync.WaitGroup) {
+	defer wg.Done()
+	logInfo(fmt.Sprintf("[%s] loading variables", pckg.Package))
+
+	packageVars, missing := getVariablesValues(pckg.Variables, g.branchSuffix)
+	if len(missing) > 0 {
+		// TODO create flag to break execution as error
+		logWarn(fmt.Sprintf("[%s] missing env vars: %s\n", pckg.Package, strings.Join(missing, ", ")))
+	}
+
+	logInfo(fmt.Sprintf("[%s] writing env file", pckg.Package))
+
+	envFile := pckg.EnvFile
+	if envFile == "" {
+		envFile = DefaultEnvFileName
+	}
+
+	genEnvFilePath := fmt.Sprintf("%s/%s", pckg.Package, envFile)
+	err := writeFile(genEnvFilePath, append(packageVars, g.globals...))
+	if err != nil {
+		logError(err)
+	}
+
+	logInfo(fmt.Sprintf("[%s] generated env file\n", pckg.Package))
 }
 
 // loadConfig loads the configuration from the provided yaml file
@@ -155,6 +158,33 @@ func (g *Generator) findBranchSuffix() string {
 	}
 
 	return ""
+}
+
+// loads global env variables (to be added on all packages)
+func (g *Generator) loadGlobals() {
+	globals, missing := getVariablesValues(g.conf.Globals, "")
+	if len(missing) > 0 {
+		logWarn(fmt.Sprintf("[globals] missing env vars: %s\n", strings.Join(missing, ", ")))
+	}
+
+	g.globals = globals
+}
+
+// returns a string slice loaded with the env var declarations
+// and an array with those not found in the environment
+func getVariablesValues(envVars []string, suffix string) ([]string, []string) {
+	vars := []string{}
+	missing := []string{}
+	for _, v := range envVars {
+		val, ok := os.LookupEnv(v + suffix)
+		if !ok {
+			missing = append(missing, v)
+		}
+
+		vars = append(vars, fmt.Sprintf("%s=%s", v, val))
+	}
+
+	return vars, missing
 }
 
 // getEnv looks up for a loaded environment variable.

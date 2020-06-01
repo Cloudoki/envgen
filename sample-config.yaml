@@ -1,22 +1,28 @@
-branchVarName: CIRCLE_BRANCH
-branchVarDefault: develop
+#branchVarName: CIRCLE_BRANCH
+#branchVarDefault: develop
 
-branches:
-  - name: develop
-    suffix: _DEV
-  - name: staging
-    suffix: _STG
+#branches:
+#  - name: develop
+#    suffix: _DEV
+#  - name: staging
+#    suffix: _STG
 
 packages:
-  - package: awesome-crawler
-    envFile: .crawler.env
+  - package: api
+    envFile: .api.env
     variables:
-      - AC_ENDPOINT
-      - AC_THRESHOLD
-  - package: web-server
+      - API_ENDPOINT
+      - API_TIMEOUT
+
+  - package: api/db
     variables:
-      - WS_PORT
-      - WS_ADDRESS
+      - DB_PORT
+      - DB_SCHEMA
+
+  - package: crawler
+    variables:
+      - C_CRON
+      - C_DB_URI
 
 globals:
   - V_DATABASE
