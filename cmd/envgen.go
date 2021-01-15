@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Version:       "2.2.0",
+	Version:       "2.2.1",
 	SilenceErrors: true,
 	Use:           "envgen <configFilePath> [envFile1] ... [envFileN]",
 	Short:         "envgen generates env files for sub packages",

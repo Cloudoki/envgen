@@ -138,7 +138,7 @@ func getVariablesValues(envVars []string, suffix string) ([]string, []string) {
 	missing := []string{}
 	for _, v := range envVars {
 		val, ok := os.LookupEnv(v + suffix)
-		if !ok {
+		if !ok || len(val) == 0 {
 			missing = append(missing, v)
 		}
 
