@@ -140,6 +140,7 @@ func getVariablesValues(envVars []string, suffix string) ([]string, []string) {
 		val, ok := os.LookupEnv(v + suffix)
 		if !ok || len(val) == 0 {
 			missing = append(missing, v)
+			continue
 		}
 
 		vars = append(vars, fmt.Sprintf("%s=%s", v, val))
